@@ -29,7 +29,7 @@ void IOTENVMQTT::enviarMensagem(String mensagem){
 		if(MQTT.available()){
 			Serial.println("MQTT Disponível");		
 			char m[mensagem.length()];
-			mensagem.toCharArray(m, mensagem.length());
+			mensagem.toCharArray(m, mensagem.length()+1);
 			MQTT.publish(0, 0, 0, "iotmessage", topi, m);
 		}
 
