@@ -15,9 +15,9 @@ void IOTENV::coletarDados(){
       return;
     }
     
-  iot.addIndice(_CO2, String(co2));
-  iot.addIndice(_TEMPERATURA, String(temperature));
-  iot.addIndice(_UMIDADE, String(humidity));
+  iot.addDadoColetado(_CO2, String(co2));
+  iot.addDadoColetado(_TEMPERATURA, String(temperature));
+  iot.addDadoColetado(_UMIDADE, String(humidity));
 }
 
 void setup(){

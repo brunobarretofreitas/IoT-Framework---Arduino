@@ -12,7 +12,7 @@ IOTENVGPS iotGps;
 DynamicJsonBuffer jsonBuffer;
 JsonObject& root = jsonBuffer.createObject();
 JsonArray& dados = root.createNestedArray("dados");
-JsonArray& local = root.createNestedArray("local");
+JsonObject& localizacao = root.createNestedObject("localizacao");
 
 IOTENV::IOTENV(unsigned long interColeta){
   intervaloColeta = interColeta;
@@ -26,7 +26,8 @@ void IOTENV::start(){
 }
 
 void IOTENV::clearArray(JsonArray& a){
-  for(int i = 0; i < a.size() + 1; i++) a.remove(0);
+  for(int i = 0; i < a.size(); i++) a.remove(0);
+  a.remove(0);
 }
 
 void IOTENV::intColeta(){
@@ -43,10 +44,13 @@ void IOTENV::processar(){
 void IOTENV::enviarDados(){
   String mensagem;
   root.printTo(mensagem);
-  Serial.println(mensagem);
+  char m[mensagem.length()];
+  mensagem.toCharArray(m, mensagem.length()+1);
+  Serial.println(m);
   clearArray(dados);
-  clearArray(local);
-
+  localizacao.remove("longitude");
+  localizacao.remove("latitude");
+  
   iotMqtt.enviarMensagem(mensagem);
 }
 
@@ -55,16 +59,11 @@ void IOTENV::getLocalizacao(){
   double lon = 0.0;
 
   iotGps.getGPSLocation(&lat, &lon);
-
-  Serial.print("latitude: ");
-  Serial.print(lat);
-  Serial.print("longitude: ");
-  Serial.print(lon);
-  local.add(lat);
-  local.add(lon);
+  localizacao["longitude"] = lon;
+  localizacao["latitude"] = lat;
 }
 
-void IOTENV::addIndice(String nome, String valor){
+void IOTENV::addDadoColetado(String nome, String valor){
   JsonObject& _dado = dados.createNestedObject();
   _dado["nome"] = nome;
   _dado["valor"] = valor;

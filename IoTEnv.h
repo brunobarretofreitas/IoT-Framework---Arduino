@@ -19,7 +19,7 @@ public:
   	void enviarDados();
 	void getLocalizacao();
 	void coletarDados(); /*Função onde os dados serão setados*/
-	void addIndice(String nome, String valor); /*Função chamada dentro de coletarIndices para adicionar um indice coletado*/
+	void addDadoColetado(String nome, String valor); /*Função chamada dentro de coletarIndices para adicionar um indice coletado*/
 
 	void intColeta();
 };
