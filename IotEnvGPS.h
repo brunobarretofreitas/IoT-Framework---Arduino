@@ -6,8 +6,8 @@
 
 class IOTENVGPS{
 public:
-  IOTENVGPS();
-  void getGPSLocation(String *lat, String *lon); /*Retorna Latitude e Longitude*/
+  void on();
+  void getGPSLocation(double *lat, double *lon); /*Retorna Latitude e Longitude*/
 };
 
 #endif

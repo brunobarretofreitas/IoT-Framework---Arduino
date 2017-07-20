@@ -3,144 +3,69 @@
 #include "GSM_MQTT.h"
 #include "gps.h"
 #include "IoTEnvConfig.h"
+#include "IoTEnvMQTT.h"
+#include "IoTEnvGPS.h"
 
-/*IOTENV*/
-extern IOTENV iot;
+IOTENVMQTT iotMqtt;
+IOTENVGPS iotGps;
 
-/*MQTT*/
-void GSM_MQTT::AutoConnect(void){connect(dispositivo, 0, 0, "", "", 1, 0, 0, 0, "", "");}
-void GSM_MQTT::OnConnect(void){}
-void GSM_MQTT::OnMessage(char *Topic, int TopicLength, char *Message, int MessageLength){}
+DynamicJsonBuffer jsonBuffer;
+JsonObject& root = jsonBuffer.createObject();
+JsonArray& dados = root.createNestedArray("dados");
+JsonArray& local = root.createNestedArray("local");
 
-String MQTT_HOST = _broker_url;
-String MQTT_PORT = _broker_porta;
-String MQTT_TOPICO = _broker_topico;
-boolean MQTT_SENT = true;
-GSM_MQTT MQTT(20);
-
-/*GPS*/
-GPSGSM gps;
-boolean gpsInit = true;
-boolean gpsData = false;
-
-IOTENV::IOTENV(char * dispositivo, char * brokerHost, char * brokerPorta, char * topico, long intervaloColeta){
-  iot.device = dispositivo;
-  iot.MQTT_HOST = brokerHost;
-  iot.MQTT_PORT = brokerPorta;
-  iot.MQTT_TOPICO = topico;
-  iot.intervalo = intervaloColeta; 
+IOTENV::IOTENV(unsigned long interColeta){
+  intervaloColeta = interColeta;
 }
 
 void IOTENV::start(){
-  Serial.println("Startando a aplicação foi chamada");
-  MQTT.gsmOn();
+  Serial.println("IoTEnv Start");
+  root["dispositivo"] = _dispositivo;
+  iotMqtt.on();
+  iotGps.on();
 }
 
-void IOTENV::process(){
-  if(MQTT_SENT){
-    message.concat('{');
-    Serial.println("Processo foi chamada");
-    getLocalizacao();
-
-    MQTT_SENT = false;
-    MQTT.begin(); 
-  }else{  
-    if(MQTT.available()){
-      Serial.println("MQTT Disponível");
-      addIndice("dispositivo", String(iot.dispositivo()));
-      iot.coletarIndices();    
-      sendMessage();
-    }else{
-      Serial.println("NOT MQTT");
-    }
-
-    MQTT_SENT = MQTT.publishSent();
-    Serial.print("O MQTTSENT DEU ");
-    Serial.println(MQTT_SENT);
-    MQTT.processing();
-  }
-  
-  delay(iot.intervaloColeta());
+void IOTENV::clearArray(JsonArray& a){
+  for(int i = 0; i < a.size() + 1; i++) a.remove(0);
 }
 
-char* IOTENV::brokerHost(){return MQTT_HOST;}
-char* IOTENV::brokerPort(){return MQTT_PORT;}
-char* IOTENV::topico(){return MQTT_TOPICO;};
-char* IOTENV::dispositivo(){return device;}
-long IOTENV::intervaloColeta(){return intervalo;}
+void IOTENV::intColeta(){
+  delay(intervaloColeta * 1000);
+}
+
+void IOTENV::processar(){
+  getLocalizacao();
+  coletarDados();
+  enviarDados();
+  intColeta();
+}
+
+void IOTENV::enviarDados(){
+  String mensagem;
+  root.printTo(mensagem);
+  Serial.println(mensagem);
+  clearArray(dados);
+  clearArray(local);
+
+  iotMqtt.enviarMensagem(mensagem);
+}
 
 void IOTENV::getLocalizacao(){
-  Serial.println("getLocalizacao foi chamada");
-  if (gps.attachGPS()){
-    Serial.println("status=GPSREADY");
-    gpsInit = true;
-    delay(20000); //Time for fixing
-  }else{
-    Serial.println("status=ERROR");
-    gpsInit = false;
-    getLocalizacao();
-  }   
-  
-  Serial.println("Getting GPS data");
-  int stat = 0;
-  while(stat!=2 && stat!=3){
-    stat=gps.getStat();  
-    switch(stat){
-      case 1: Serial.println("NOT FIXED");
-      break;
-      case 2: Serial.println("2D FIXED");
-      break;
-      case 3: Serial.println("3D FIXED");
-      break;
-    }
-  }
-      
-  gps.getPar(lon,lat,alt,time,vel);
+  double lat = 0.0;
+  double lon = 0.0;
 
-  Serial.println(lon);
-  Serial.println(lat);
-  Serial.println(alt);
-  Serial.println(time);
-  Serial.println(vel);
-  
-  message.concat("loc:[{");
-  message.concat('"');
-  message.concat("lat");
-  message.concat('"');
-  message.concat(':');
-  message.concat('"');
-  message.concat(lat);
-  message.concat('"');
-  message.concat(',');
-  message.concat('"');
-  message.concat("lon");
-  message.concat('"');
-  message.concat(':');
-  message.concat('"');
-  message.concat(lon);
-  message.concat('"');
-  message.concat("}],");
+  iotGps.getGPSLocation(&lat, &lon);
 
-  gps.deattachGPS();
-} 
-
-void IOTENV::addIndice(char * nome, String valor){
-  Serial.println("Adicionar Indice foi chamada");
-  message.concat('"');
-  message.concat(nome);
-  message.concat('"');
-  message.concat(":");
-  message.concat('"');
-  message.concat(valor);
-  message.concat('"');
-  message.concat(",");
+  Serial.print("latitude: ");
+  Serial.print(lat);
+  Serial.print("longitude: ");
+  Serial.print(lon);
+  local.add(lat);
+  local.add(lon);
 }
 
-void IOTENV::sendMessage(){
-    message.remove(message.length() - 1);/*Removendo ultima ','*/
-    message.concat('}');
-    char m[message.length()];
-    message.toCharArray(m, message.length());
-    MQTT.publish(0, 0, 0, "iotmessage", iot.topico(), m);
-    message = "";  
+void IOTENV::addIndice(String nome, String valor){
+  JsonObject& _dado = dados.createNestedObject();
+  _dado["nome"] = nome;
+  _dado["valor"] = valor;
 }

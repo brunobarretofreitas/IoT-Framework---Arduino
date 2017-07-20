@@ -28,7 +28,7 @@ GSM_MQTT::GSM_MQTT(unsigned long KeepAlive)
 
 void GSM_MQTT::gsmOn(void)
 {
-  Serial.begin(9600);
+  //Serial.begin(9600);
   Serial1.begin(2400);
   Serial1.write("AT\r\n");
   delay(1000);
@@ -251,6 +251,7 @@ void GSM_MQTT::_sendLength(int len)
 }
 void GSM_MQTT::connect(char *ClientIdentifier, char UserNameFlag, char PasswordFlag, char *UserName, char *Password, char CleanSession, char WillFlag, char WillQoS, char WillRetain, char *WillTopic, char *WillMessage)
 {
+  Serial.println("função connect chamada");
   ConnectionAcknowledgement = NO_ACKNOWLEDGEMENT;
   Serial1.print(char(CONNECT * 16 ));
   char ProtocolName[7] = "MQIsdp";
